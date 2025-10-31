@@ -142,53 +142,27 @@ npm install
 npm run build
 ```
 
-### 5. 配置PM2启动
-
-在项目根目录的 `ecosystem.config.js` 中确认配置：
-
-```javascript
-module.exports = {
-  apps: [
-    {
-      name: 'client',
-      script: 'serve',
-      env: {
-        PM2_SERVE_PATH: './client/build',
-        PM2_SERVE_PORT: 3001,
-        PM2_SERVE_SPA: 'true',
-        PM2_SERVE_HOMEPAGE: '/index.html'
-      }
-    },
-    {
-      name: 'server',
-      script: './server/src/app.js',
-      env: {
-        PORT: 13000,
-        NODE_ENV: 'production'
-      }
-    }
-  ]
-};
-```
-
-### 6. 启动服务
+### 5. 使用Docker Compose启动
 
 ```bash
-# 安装PM2（如果还没有）
-npm install -g pm2
-
-# 启动服务
-pm2 start ecosystem.config.js
-
-# 查看状态
-pm2 status
-
-# 设置开机自启
-pm2 startup
-pm2 save
+cd ..
+docker compose up -d --build
 ```
 
-### 7. 测试访问
+### 6. 查看服务状态
+
+```bash
+# 列出当前容器
+docker compose ps
+
+# 查看后端日志
+docker compose logs -f server
+
+# 查看前端日志
+docker compose logs -f client
+```
+
+### 9. 测试访问
 
 在局域网内的其他设备上访问：
 
@@ -239,7 +213,7 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --setglobalstate off
 ### 1. 检查服务器日志
 
 ```bash
-pm2 logs server
+docker compose logs -f server
 ```
 
 应该看到类似输出：
@@ -273,9 +247,9 @@ IP白名单配置完成: 0个单个IP, 0个IP范围
 lsof -i :3001
 lsof -i :13000
 
-# 检查PM2状态
-pm2 status
-pm2 logs
+# 检查容器状态
+docker compose ps
+docker compose logs server
 ```
 
 ### 问题2: 局域网设备被拒绝访问
@@ -287,11 +261,11 @@ pm2 logs
 **解决方法**：
 ```bash
 # 查看服务器日志中的IP地址
-pm2 logs server | grep "拒绝"
+docker compose logs server | grep "拒绝"
 
 # 临时禁用IP白名单测试
 # 在.env中设置: IP_WHITELIST_ENABLED=false
-pm2 restart server
+docker compose restart server
 ```
 
 ### 问题3: 无法获取真实IP

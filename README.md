@@ -37,7 +37,7 @@ docker-compose logs -f
 
 - Node.js (v14+)
 - MySQL (v8.0+)
-- PM2 (生产环境)
+- Docker & Docker Compose（用于容器化部署）
 
 ### 安装步骤
 
@@ -120,30 +120,9 @@ IP_WHITELIST="203.0.113.0/24,192.168.1.100"
 
 ## 部署
 
-使用PM2进行生产环境部署：
-
-```bash
-pm2 start ecosystem.config.js
-```
-
-详细文档请参考: [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md)
+推荐通过Docker进行部署，相关说明见上文及 [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md)。
 
 ## 许可证
 
 [根据项目情况添加许可证信息]
 
-
-
-# Email Configuration
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=specialist@mmcwellness.ca
-SMTP_PASSWORD=gucz jkeu ysxk lqwg
-SMTP_FROM=specialist@mmcwellness.ca
-SMTP_CC=info@mmcwellness.ca
-
-# Reminder Settings
-REMINDER_DAYS_BEFORE=1
-REMINDER_HOUR=17
-ATTACHMENTS_PATH=src/attachments/email
-DEBUG=false

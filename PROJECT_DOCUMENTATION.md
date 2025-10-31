@@ -12,7 +12,6 @@ ClockingApp is a comprehensive employee time tracking system designed for managi
 - **MySQL** database with connection pooling
 - **JWT** for authentication
 - **bcryptjs** for password hashing
-- **PM2** for process management
 - **node-cron** for scheduled tasks
 - **nodemailer** for email notifications
 
@@ -50,7 +49,8 @@ clockingApp/
 │   │   ├── scripts/           # Database initialization and utilities
 │   │   └── utils/             # Utility functions
 │   └── attachments/           # Email templates and attachments
-└── ecosystem.config.js        # PM2 configuration
+├── docker-compose.yml          # Docker multi-service orchestration
+└── docker-compose.override.yml.example
 ```
 
 ## Features
@@ -215,29 +215,33 @@ REMINDER_HOUR=17
 
 ### Deployment Configuration
 
-#### PM2 Ecosystem (`ecosystem.config.js`)
-```javascript
-module.exports = {
-  apps: [
-    {
-      name: 'client',
-      script: 'serve',
-      env: {
-        PM2_SERVE_PATH: './client/build',
-        PM2_SERVE_PORT: 3001,
-        PM2_SERVE_SPA: 'true'
-      }
-    },
-    {
-      name: 'server',
-      script: './server/src/app.js',
-      env: {
-        PORT: 13000,
-        NODE_ENV: 'production'
-      }
-    }
-  ]
-};
+#### Docker Compose (`docker-compose.yml`)
+```yaml
+version: '3.8'
+services:
+  server:
+    build: ./server
+    ports:
+      - "13000:13000"
+    env_file:
+      - ./server/.env
+    depends_on:
+      - db
+  client:
+    build: ./client
+    ports:
+      - "3001:3000"
+    environment:
+      - REACT_APP_API_URL=http://localhost:13000/api
+  db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_ROOT_PASSWORD=your_password
+      - MYSQL_DATABASE=clockingapp
+    volumes:
+      - mysql-data:/var/lib/mysql
+volumes:
+  mysql-data:
 ```
 
 ## Installation & Setup
@@ -245,9 +249,9 @@ module.exports = {
 ### Prerequisites
 - Node.js (v14 or higher)
 - MySQL (v8.0 or higher)
-- PM2 (for production deployment)
+- Docker & Docker Compose (for containerized deployment)
 
-### Backend Setup
+### Backend Setup (Local without Docker)
 ```bash
 # Navigate to server directory
 cd server
@@ -269,7 +273,7 @@ npm run dev
 npm start
 ```
 
-### Frontend Setup
+### Frontend Setup (Local without Docker)
 ```bash
 # Navigate to client directory
 cd client
@@ -290,6 +294,20 @@ npm run build
 cd server
 node src/scripts/initDatabase.js
 ```
+
+### Docker Deployment
+```bash
+# Start all services
+docker-compose up -d
+
+# Tail logs
+docker-compose logs -f
+
+# Stop and remove containers
+docker-compose down
+```
+
+Docker handles process management within each container, so no additional PM2 configuration is required when deploying via Docker. To override environment variables, create a custom file based on `docker-compose.override.yml.example`.
 
 ### Default Admin Account
 - **Username**: `manager`
@@ -336,7 +354,7 @@ node src/scripts/initDatabase.js
 ### Backup Strategy
 - **Database Backups**: Regular MySQL dumps
 - **Code Repository**: Git version control
-- **Configuration Backups**: Environment and PM2 settings
+- **Configuration Backups**: Environment files and Docker Compose configuration
 
 ### Performance Considerations
 - **Database Indexing**: Optimized queries for large datasets
