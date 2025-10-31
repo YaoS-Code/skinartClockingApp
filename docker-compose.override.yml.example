@@ -1,0 +1,39 @@
+# Docker环境变量配置示例
+# 复制此文件为 docker-compose.override.yml 来自定义配置（不会被git跟踪）
+
+# 使用方法：
+# cp docker-compose.override.yml.example docker-compose.override.yml
+# 然后编辑 docker-compose.override.yml
+
+version: '3.8'
+
+services:
+  server:
+    environment:
+      # 数据库配置（使用Docker内的MySQL）
+      DB_HOST: mysql
+      DB_USER: clockingapp_user
+      DB_PASSWORD: your_secure_password_here
+      DB_NAME: clockingapp
+      
+      # JWT密钥（请更改为强密码）
+      JWT_SECRET: your_jwt_secret_key_here
+      
+      # IP白名单：仅允许局域网访问
+      IP_WHITELIST_ENABLED: "true"
+      IP_WHITELIST_LOCAL_ONLY: "true"
+      
+      # CORS配置（根据实际Mac Mini的IP调整）
+      CORS_ORIGIN: http://192.168.1.50:3001
+
+  mysql:
+    environment:
+      # MySQL root密码
+      MYSQL_ROOT_PASSWORD: your_mysql_root_password
+      # MySQL数据库名
+      MYSQL_DATABASE: clockingapp
+      # MySQL用户名
+      MYSQL_USER: clockingapp_user
+      # MySQL用户密码
+      MYSQL_PASSWORD: your_secure_password_here
+
