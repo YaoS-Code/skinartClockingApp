@@ -55,15 +55,16 @@ exports.register = async (req, res) => {
             [username, hashedPassword, email, full_name, role, status]
         );
 
-        // Log the action in audit_logs
+        // Log the action in audit_logs (only if user is authenticated, otherwise use system user id = 0)
+        const userId = req.user?.id || 0;
         await db.query(
             `INSERT INTO audit_logs (user_id, action, table_name, record_id, new_values, ip_address) 
              VALUES (?, 'CREATE', 'users', ?, ?, ?)`,
             [
-                req.user.id,
+                userId,
                 result.insertId,
                 JSON.stringify({ username, email, full_name, role, status }),
-                req.ip
+                req.ip || 'unknown'
             ]
         );
 

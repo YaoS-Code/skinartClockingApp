@@ -13,7 +13,9 @@ const ipWhitelist = require('./middleware/ipWhitelist');
 const authRoutes = require('./routes/authRoutes');
 const clockRoutes = require('./routes/clockRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-const reminderRoutes = require('./routes/reminderRoutes'); // Add this line
+const reminderRoutes = require('./routes/reminderRoutes');
+const clockRequestRoutes = require('./routes/clockRequestRoutes');
+const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
@@ -22,8 +24,13 @@ app.set('trust proxy', true);
 
 // Middleware
 app.use(helmet());
+// CORS配置 - 支持环境变量配置和默认值
+const corsOrigins = process.env.CORS_ORIGIN 
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : ['http://clock.skinartmd.ca:3001', 'http://100.78.69.23:3001', 'http://localhost:3001', 'http://localhost:3000', 'http://192.168.1.96:3001'];
+
 app.use(cors({
-  origin: ['http://216.232.48.211:3001', 'http://localhost:3001', 'http://localhost:3000', 'https://clock.mmcwellness.ca'],
+  origin: corsOrigins,
   credentials: true
 }));
 app.use(express.json()); // Make sure this is here
@@ -37,6 +44,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/clock', clockRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reminders', reminderRoutes);
+app.use('/api/clock-requests', clockRequestRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 // Debug middleware to log requests
 app.use((req, res, next) => {

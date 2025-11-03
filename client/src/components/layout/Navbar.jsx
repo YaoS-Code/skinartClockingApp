@@ -1,8 +1,9 @@
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logout } from '../../store/authSlice';
+import NotificationMenu from './NotificationMenu';
 
 function Navbar() {
   const navigate = useNavigate();
@@ -18,37 +19,43 @@ function Navbar() {
     <AppBar position="static" sx={{ marginBottom: 4 }}>
       <Toolbar>
         <Typography variant="h6" component={Link} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}>
-          ClockingApp
+          SkinartMD
         </Typography>
         {isAuthenticated ? (
           <>
             <Button color="inherit" component={Link} to="/">
-              Home
+              打卡
             </Button>
             <Button color="inherit" component={Link} to="/records">
-              Records
+              记录
+            </Button>
+            <Button color="inherit" component={Link} to="/clock-requests">
+              补打卡
             </Button>
             {user?.role === 'admin' && (
               <>
                 <Button color="inherit" component={Link} to="/admin/users">
-                  Users
+                  员工管理
                 </Button>
                 <Button color="inherit" component={Link} to="/admin/summary">
-                  Summary
+                  汇总
                 </Button>
               </>
             )}
+            <Box sx={{ ml: 1 }}>
+              <NotificationMenu />
+            </Box>
             <Button color="inherit" onClick={handleLogout}>
-              Logout
+              退出
             </Button>
           </>
         ) : (
           <>
             <Button color="inherit" component={Link} to="/login">
-              Login
+              登录
             </Button>
             <Button color="inherit" component={Link} to="/register">
-              Register
+              注册
             </Button>
           </>
         )}

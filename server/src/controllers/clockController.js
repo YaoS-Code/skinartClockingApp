@@ -49,10 +49,6 @@ exports.clockOut = async (req, res) => {
         // 自动设置为SkinartMD，无需location参数
         const location = DEFAULT_LOCATION;
 
-        // Validate and set break_minutes (default 30 minutes, but editable)
-        const validatedBreakMinutes = break_minutes !== undefined ? 
-            Math.max(0, parseInt(break_minutes) || 0) : 30;
-
         // Find active clock-in record
         const [activeClocking] = await db.query(
             `SELECT * FROM clock_records 
@@ -71,7 +67,15 @@ exports.clockOut = async (req, res) => {
         // Calculate duration
         const clockInTime = moment(activeClocking[0].clock_in);
         const clockOutTime = moment();
+        const workSeconds = clockOutTime.diff(clockInTime, 'seconds');
         const duration = clockOutTime.diff(clockInTime, 'hours', true);
+        
+        // Dynamic break logic: < 4 hours = 0, >= 4 hours = 30 minutes
+        const autoBreakMinutes = workSeconds < 14400 ? 0 : 30; // 4 hours = 14400 seconds
+        
+        // Allow manual override if provided, otherwise use automatic calculation
+        const validatedBreakMinutes = break_minutes !== undefined ? 
+            Math.max(0, parseInt(break_minutes) || 0) : autoBreakMinutes;
 
         // Update the record
         await db.query(
@@ -135,7 +139,10 @@ exports.getRecords = async (req, res) => {
         let params = [userId];
 
         if (start_date && end_date) {
-            query += ` AND cr.clock_in >= ? AND DATE(cr.clock_in) <= DATE(?)`;
+            // Add buffer to handle timezone differences
+            // Subtract 1 day from start_date to include records from previous day evening
+            // Add 1 day to end_date to include records from next day morning
+            query += ` AND DATE(cr.clock_in) >= DATE_SUB(?, INTERVAL 1 DAY) AND DATE(cr.clock_in) <= DATE_ADD(?, INTERVAL 1 DAY)`;
             params.push(start_date, end_date);
         }
 

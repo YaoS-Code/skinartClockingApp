@@ -235,6 +235,12 @@ class IPWhitelist {
         return next();
       }
 
+      // 允许公开的认证路由（注册和登录），这些路由应该对所有用户开放
+      const publicRoutes = ['/api/auth/register', '/api/auth/login'];
+      if (publicRoutes.includes(req.path)) {
+        return next();
+      }
+
       const clientIP = this.getClientIP(req);
 
       // 如果启用了"仅允许局域网"模式，且没有配置具体白名单，则允许所有私有IP

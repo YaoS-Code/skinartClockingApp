@@ -1,0 +1,4 @@
+[mysqld]
+default-time-zone='America/Vancouver'
+
+

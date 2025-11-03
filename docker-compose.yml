@@ -9,10 +9,12 @@ services:
       MYSQL_DATABASE: clockingapp
       MYSQL_USER: clockingapp_user
       MYSQL_PASSWORD: SkinartMD_2024_DB!
+      TZ: America/Vancouver
     ports:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./mysql.cnf:/etc/mysql/conf.d/custom.cnf
     networks:
       - clockingapp-network
     healthcheck:
@@ -22,7 +24,7 @@ services:
       retries: 5
       start_period: 30s
 
-  # 后端API服务
+  # 后端API服务（直接暴露端口）
   server:
     build:
       context: ./server
@@ -40,11 +42,12 @@ services:
       DB_PORT: 3306
       MYSQL_ROOT_PASSWORD: SkinartMD_2024_Root!
       JWT_SECRET: skinartmd_jwt_secret_2024
-      IP_WHITELIST_ENABLED: true
-      IP_WHITELIST_LOCAL_ONLY: true
-      CORS_ORIGIN: http://localhost:3001
+      IP_WHITELIST_ENABLED: false
+      IP_WHITELIST_LOCAL_ONLY: false
+      CORS_ORIGIN: http://clock.skinartmd.ca,https://clock.skinartmd.ca,http://api.clock.skinartmd.ca,https://api.clock.skinartmd.ca,http://clock.skinartmd.ca:3001,https://clock.skinartmd.ca:3001,http://100.78.69.23,http://100.78.69.23:3001,http://localhost,http://localhost:3001,http://localhost:3000
+      TZ: America/Vancouver
     ports:
-      - "13000:13000"
+      - "13000:13000"  # 直接暴露后端API端口
     depends_on:
       mysql:
         condition: service_healthy
@@ -55,23 +58,23 @@ services:
       - /app/node_modules
     command: sh -c "sleep 10 && npm run init-db && node src/app.js"
 
-  # 前端服务
+  # 前端服务（直接暴露端口）
   client:
     build:
       context: ./client
       dockerfile: Dockerfile
       args:
-        REACT_APP_API_URL: ${REACT_APP_API_URL:-http://localhost:13000}
+        REACT_APP_API_URL: ""  # 不使用构建时环境变量，运行时动态构建
     container_name: clockingapp-client
     restart: unless-stopped
     ports:
-      - "3001:3001"
+      - "3001:3001"  # 直接暴露前端端口
     depends_on:
       - server
     networks:
       - clockingapp-network
     environment:
-      REACT_APP_API_URL: http://localhost:13000
+      REACT_APP_API_URL: ""  # 前端会动态构建API URL
 
 volumes:
   mysql_data:

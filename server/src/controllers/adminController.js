@@ -12,73 +12,114 @@ exports.getRecordsSummaryByPeriod = async (req, res) => {
             });
         }
 
+        // Handle both YYYY-MM-DD and YYYY-MM-DD HH:mm:ss formats
+        let startDateTime, endDateTime;
+        
+        if (start_date.includes(' ')) {
+            // Already has time component
+            startDateTime = moment(start_date).startOf('day').format('YYYY-MM-DD HH:mm:ss');
+        } else {
+            // Pure date format, add start of day
+            startDateTime = moment(start_date).startOf('day').format('YYYY-MM-DD HH:mm:ss');
+        }
+        
+        if (end_date.includes(' ')) {
+            // Already has time component, but ensure it's end of day
+            endDateTime = moment(end_date.split(' ')[0]).endOf('day').format('YYYY-MM-DD HH:mm:ss');
+        } else {
+            // Pure date format, add end of day
+            endDateTime = moment(end_date).endOf('day').format('YYYY-MM-DD HH:mm:ss');
+        }
+
+        console.log('Date range:', { start_date, end_date, startDateTime, endDateTime });
+
         const query = `
-        WITH user_location_summary AS (
+        WITH filtered_records AS (
+            SELECT 
+                cr.id as record_id,
+                cr.user_id,
+                cr.clock_in,
+                cr.clock_out,
+                cr.location,
+                cr.break_minutes,
+                CASE 
+                    WHEN cr.clock_out IS NOT NULL THEN
+                        CASE 
+                            WHEN TIMESTAMPDIFF(SECOND, cr.clock_in, cr.clock_out) < 14400 THEN
+                                -- 少于4小时(14400秒)，不扣break
+                                TIMESTAMPDIFF(SECOND, cr.clock_in, cr.clock_out) / 3600
+                            ELSE
+                                -- 4小时或以上，扣除30分钟(1800秒)
+                                (TIMESTAMPDIFF(SECOND, cr.clock_in, cr.clock_out) - 1800) / 3600
+                        END
+                    ELSE
+                        -- 未clock out的情况
+                        CASE 
+                            WHEN TIMESTAMPDIFF(SECOND, cr.clock_in, NOW()) < 14400 THEN
+                                TIMESTAMPDIFF(SECOND, cr.clock_in, NOW()) / 3600
+                            ELSE
+                                (TIMESTAMPDIFF(SECOND, cr.clock_in, NOW()) - 1800) / 3600
+                        END
+                END as individual_hours
+            FROM clock_records cr
+            WHERE cr.clock_in >= ? 
+            AND cr.clock_in <= ?
+        ),
+        user_location_summary AS (
             SELECT 
                 u.id as user_id,
                 u.username,
                 u.full_name,
-                cr.id as record_id,
-                cr.location,
-                cr.break_minutes,
-                COUNT(cr.id) OVER (PARTITION BY u.id) as total_records,
-                COUNT(cr.id) OVER (PARTITION BY u.id, cr.location) as location_records,
-                SUM(
-                    CASE 
-                        WHEN cr.clock_out IS NOT NULL 
-                        THEN (TIMESTAMPDIFF(SECOND, cr.clock_in, cr.clock_out) - (cr.break_minutes * 60))
-                        ELSE (TIMESTAMPDIFF(SECOND, cr.clock_in, NOW()) - (cr.break_minutes * 60))
-                    END
-                ) OVER (PARTITION BY u.id) / 3600 as total_hours,
-                SUM(
-                    CASE 
-                        WHEN cr.clock_out IS NOT NULL 
-                        THEN (TIMESTAMPDIFF(SECOND, cr.clock_in, cr.clock_out) - (cr.break_minutes * 60))
-                        ELSE (TIMESTAMPDIFF(SECOND, cr.clock_in, NOW()) - (cr.break_minutes * 60))
-                    END
-                ) OVER (PARTITION BY u.id, cr.location) / 3600 as location_hours,
-                MIN(cr.clock_in) OVER (PARTITION BY u.id) as first_clock_in,
-                MAX(cr.clock_out) OVER (PARTITION BY u.id) as last_clock_out,
-                MIN(cr.clock_in) OVER (PARTITION BY u.id, cr.location) as location_first_clock_in,
-                MAX(cr.clock_out) OVER (PARTITION BY u.id, cr.location) as location_last_clock_out,
-                cr.clock_in,
-                cr.clock_out,
-                CASE 
-                    WHEN cr.clock_out IS NOT NULL 
-                    THEN (TIMESTAMPDIFF(SECOND, cr.clock_in, cr.clock_out) - (cr.break_minutes * 60))
-                    ELSE (TIMESTAMPDIFF(SECOND, cr.clock_in, NOW()) - (cr.break_minutes * 60))
-                END / 3600 as individual_hours
+                fr.record_id,
+                fr.location,
+                fr.break_minutes,
+                fr.clock_in,
+                fr.clock_out,
+                fr.individual_hours,
+                COUNT(fr.record_id) OVER (PARTITION BY u.id) as total_records,
+                COUNT(fr.record_id) OVER (PARTITION BY u.id, fr.location) as location_records,
+                SUM(fr.individual_hours) OVER (PARTITION BY u.id) as total_hours,
+                SUM(fr.individual_hours) OVER (PARTITION BY u.id, fr.location) as location_hours,
+                MIN(fr.clock_in) OVER (PARTITION BY u.id) as first_clock_in,
+                MAX(fr.clock_out) OVER (PARTITION BY u.id) as last_clock_out,
+                MIN(fr.clock_in) OVER (PARTITION BY u.id, fr.location) as location_first_clock_in,
+                MAX(fr.clock_out) OVER (PARTITION BY u.id, fr.location) as location_last_clock_out
             FROM users u
-            LEFT JOIN clock_records cr ON u.id = cr.user_id
-            WHERE cr.clock_in >= ? 
-            AND DATE(cr.clock_in) <= DATE(?)
+            INNER JOIN filtered_records fr ON u.id = fr.user_id
         )
         SELECT * FROM user_location_summary
         ORDER BY user_id, clock_in DESC
         `;
 
-        const [summary] = await db.query(query, [start_date, end_date]);
+        const [summary] = await db.query(query, [startDateTime, endDateTime]);
+
+        console.log('Query result count:', summary.length);
+        console.log('Query params:', { start_date, end_date, startDateTime, endDateTime });
 
         // Format the results
         const formattedSummary = summary.map(record => ({
             ...record,
-            total_hours: Number(record.total_hours).toFixed(2),
-            location_hours: Number(record.location_hours).toFixed(2),
-            individual_hours: Number(record.individual_hours).toFixed(2),
-            first_clock_in: moment(record.first_clock_in).format('YYYY-MM-DD HH:mm:ss'),
+            total_hours: record.total_hours ? Number(record.total_hours).toFixed(2) : '0.00',
+            location_hours: record.location_hours ? Number(record.location_hours).toFixed(2) : '0.00',
+            individual_hours: record.individual_hours ? Number(record.individual_hours).toFixed(2) : '0.00',
+            first_clock_in: record.first_clock_in ? 
+                moment(record.first_clock_in).format('YYYY-MM-DD HH:mm:ss') : null,
             last_clock_out: record.last_clock_out ?
                 moment(record.last_clock_out).format('YYYY-MM-DD HH:mm:ss') :
                 'Still clocked in',
-            location_first_clock_in: moment(record.location_first_clock_in).format('YYYY-MM-DD HH:mm:ss'),
+            location_first_clock_in: record.location_first_clock_in ? 
+                moment(record.location_first_clock_in).format('YYYY-MM-DD HH:mm:ss') : null,
             location_last_clock_out: record.location_last_clock_out ?
                 moment(record.location_last_clock_out).format('YYYY-MM-DD HH:mm:ss') :
                 'Still clocked in',
-            clock_in: moment(record.clock_in).format('YYYY-MM-DD HH:mm:ss'),
+            clock_in: record.clock_in ? 
+                moment(record.clock_in).format('YYYY-MM-DD HH:mm:ss') : null,
             clock_out: record.clock_out ?
                 moment(record.clock_out).format('YYYY-MM-DD HH:mm:ss') :
                 null
         }));
 
+        console.log('Formatted summary count:', formattedSummary.length);
         res.json(formattedSummary);
     } catch (error) {
         console.error('Get records summary error:', error);
@@ -109,9 +150,22 @@ exports.getUserRecords = async (req, res) => {
                 cr.status,
                 cr.notes,
                 CASE 
-                    WHEN cr.clock_out IS NOT NULL 
-                    THEN TIMESTAMPDIFF(SECOND, cr.clock_in, cr.clock_out) / 3600
-                    ELSE TIMESTAMPDIFF(SECOND, cr.clock_in, NOW()) / 3600
+                    WHEN cr.clock_out IS NOT NULL THEN
+                        CASE 
+                            WHEN TIMESTAMPDIFF(SECOND, cr.clock_in, cr.clock_out) < 14400 THEN
+                                -- 少于4小时，不扣break
+                                TIMESTAMPDIFF(SECOND, cr.clock_in, cr.clock_out) / 3600
+                            ELSE
+                                -- 4小时或以上，扣除30分钟
+                                (TIMESTAMPDIFF(SECOND, cr.clock_in, cr.clock_out) - 1800) / 3600
+                        END
+                    ELSE
+                        CASE 
+                            WHEN TIMESTAMPDIFF(SECOND, cr.clock_in, NOW()) < 14400 THEN
+                                TIMESTAMPDIFF(SECOND, cr.clock_in, NOW()) / 3600
+                            ELSE
+                                (TIMESTAMPDIFF(SECOND, cr.clock_in, NOW()) - 1800) / 3600
+                        END
                 END as hours_worked,
                 cr.location,
                 cr.ip_address,

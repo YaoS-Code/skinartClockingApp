@@ -15,11 +15,18 @@ function Register() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError(''); // 清除之前的错误
     try {
       await api.post('/auth/register', formData);
       navigate('/login');
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed');
+      console.error('Registration error:', err);
+      // 显示更详细的错误信息
+      const errorMessage = err.response?.data?.error || 
+                          err.response?.data?.message || 
+                          err.message || 
+                          'Registration failed';
+      setError(errorMessage);
     }
   };
 

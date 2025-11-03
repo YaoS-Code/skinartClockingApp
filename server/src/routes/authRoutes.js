@@ -4,13 +4,11 @@ const { register, login, getProfile } = require('../controllers/authController')
 const { auth } = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth'); // Add this import
 
-// Public route
+// Public routes
 router.post('/login', login);
+router.post('/register', register); // Public registration route
 
 // Protected routes
 router.get('/profile', auth, getProfile);
-
-// Admin only routes
-router.post('/register', auth, adminAuth, register);
 
 module.exports = router;

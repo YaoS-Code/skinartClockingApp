@@ -1,9 +1,10 @@
 // src/components/admin/AdminNavbar.jsx
 import React from 'react';
-import { AppBar, Toolbar, Typography, Button } from '@mui/material';
+import { AppBar, Toolbar, Typography, Button, Box } from '@mui/material';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { logout } from '../../store/authSlice';
+import NotificationMenu from '../layout/NotificationMenu';
 
 function AdminNavbar() {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ function AdminNavbar() {
             color: 'inherit' 
           }}
         >
-          Admin Dashboard
+          SkinartMD 管理
         </Typography>
         
         <Button 
@@ -39,7 +40,7 @@ function AdminNavbar() {
             backgroundColor: location.pathname === '/admin/summary' ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
           }}
         >
-          Summary
+          汇总
         </Button>
         
         <Button 
@@ -50,14 +51,29 @@ function AdminNavbar() {
             backgroundColor: location.pathname === '/admin/users' ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
           }}
         >
-          Users
+          员工管理
         </Button>
+        
+        <Button 
+          color="inherit" 
+          component={Link} 
+          to="/admin/clock-requests"
+          sx={{ 
+            backgroundColor: location.pathname === '/admin/clock-requests' ? 'rgba(255, 255, 255, 0.1)' : 'transparent'
+          }}
+        >
+          补打卡审批
+        </Button>
+        
+        <Box sx={{ ml: 1 }}>
+          <NotificationMenu />
+        </Box>
         
         <Button 
           color="inherit" 
           onClick={handleLogout}
         >
-          Logout
+          退出
         </Button>
       </Toolbar>
     </AppBar>

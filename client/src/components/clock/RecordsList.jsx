@@ -80,7 +80,9 @@ function RecordsList() {
   }, [fetchRecords]);
 
   const formatDateTime = (dateString) => {
-    return format(new Date(dateString), 'yyyy-MM-dd HH:mm:ss');
+    // Database stores local Vancouver time, display as-is
+    const localDate = new Date(dateString.replace(' ', 'T'));
+    return format(localDate, 'yyyy-MM-dd HH:mm:ss');
   };
 
   const formatDuration = (hours) => {
@@ -93,6 +95,11 @@ function RecordsList() {
     const wholeHours = Math.floor(hours);
     const minutes = Math.round((hours - wholeHours) * 60);
     return `${wholeHours}h ${minutes}m`;
+  };
+
+  const formatTotalHours = (hours) => {
+    const formatted = Number(hours || 0).toFixed(1);
+    return `${formatted} ${formatted === '1.0' ? 'hour' : 'hours'}`;
   };
 
   return (
@@ -144,7 +151,7 @@ function RecordsList() {
           <Grid container spacing={2}>
             <Grid item>
               <Chip
-                label={`Total Hours: ${formatDuration(totalHours)}`}
+                label={`Total Hours: ${formatTotalHours(totalHours)}`}
                 color="primary"
                 sx={{ fontSize: '1.1rem', padding: '20px' }}
               />
@@ -182,7 +189,7 @@ function RecordsList() {
                   }}
                 >
                   <TableCell>
-                    {format(new Date(record.clock_in), 'yyyy-MM-dd')}
+                    {format(new Date(record.clock_in.replace(' ', 'T')), 'yyyy-MM-dd')}
                   </TableCell>
                   <TableCell>{formatDateTime(record.clock_in)}</TableCell>
                   <TableCell>
@@ -217,8 +224,8 @@ function RecordsList() {
                   <TableCell>Total</TableCell>
                   <TableCell>-</TableCell>
                   <TableCell>-</TableCell>
+                  <TableCell>{formatTotalHours(totalHours)}</TableCell>
                   <TableCell>-</TableCell>
-                  <TableCell>{formatDuration(totalHours)}</TableCell>
                   <TableCell>
                     {records.reduce((total, record) => total + (record.break_minutes || 0), 0)} min
                   </TableCell>

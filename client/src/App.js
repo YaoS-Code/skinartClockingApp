@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom'; // Add Navigate
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { CssBaseline, Container } from '@mui/material';
 import { useSelector } from 'react-redux';
 import Navbar from './components/layout/Navbar';
@@ -7,13 +7,16 @@ import Login from './components/auth/Login';
 import Register from './components/auth/Register';
 import ClockInOut from './components/clock/ClockInOut';
 import RecordsList from './components/clock/RecordsList';
+import ClockRequestForm from './components/clock/ClockRequestForm';
+import MyClockRequests from './components/clock/MyClockRequests';
 import UserManagement from './components/admin/UserManagement';
 import PrivateRoute from './components/layout/PrivateRoute';
 import AdminNavbar from './components/admin/AdminNavbar';
 import RecordsSummary from './components/admin/RecordsSummary';
+import ClockRequestsManagement from './components/admin/ClockRequestsManagement';
 
 function App() {
-  const { user } = useSelector((state) => state.auth);
+  const { user, isAuthenticated } = useSelector((state) => state.auth);
 
   return (
     <>
@@ -44,6 +47,19 @@ function App() {
               </PrivateRoute>
             }
           />
+          <Route
+            path="/clock-requests"
+            element={
+              <PrivateRoute>
+                <>
+                  <ClockRequestForm />
+                  <Container sx={{ mt: 4 }}>
+                    <MyClockRequests />
+                  </Container>
+                </>
+              </PrivateRoute>
+            }
+          />
 
           {/* Admin Routes */}
           <Route
@@ -67,6 +83,14 @@ function App() {
             element={
               <PrivateRoute adminOnly>
                 <UserManagement />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/admin/clock-requests"
+            element={
+              <PrivateRoute adminOnly>
+                <ClockRequestsManagement />
               </PrivateRoute>
             }
           />

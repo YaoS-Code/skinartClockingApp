@@ -69,8 +69,8 @@ function UserManagement() {
 
   const handleRegister = async () => {
     try {
-      await api.post('/auth/register', newUser);
-      setSuccess('User registered successfully');
+      await api.post('/admin/users', newUser);
+      setSuccess('User created successfully');
       setOpenDialog(false);
       fetchUsers();
       setNewUser({
@@ -82,8 +82,8 @@ function UserManagement() {
       });
       setError('');
     } catch (error) {
-      console.error('Failed to register user:', error);
-      setError(error.response?.data?.error || error.response?.data?.message || 'Failed to register user');
+      console.error('Failed to create user:', error);
+      setError(error.response?.data?.error || error.response?.data?.message || 'Failed to create user');
       setSuccess('');
     }
   };
@@ -152,17 +152,27 @@ function UserManagement() {
 
   const handleDeleteUser = async () => {
     try {
-      await api.delete(`/admin/users/${deletingUser.id}`);
-      setSuccess('User deleted successfully');
+      console.log('Deleting user:', deletingUser.id);
+      const response = await api.delete(`/admin/users/${deletingUser.id}`);
+      console.log('Delete response:', response.data);
+      setSuccess(response.data?.message || 'User deleted successfully');
       setOpenDeleteDialog(false);
       setDeletingUser(null);
       fetchUsers();
       setError('');
     } catch (error) {
       console.error('Failed to delete user:', error);
-      setError(error.response?.data?.error || error.response?.data?.message || 'Failed to delete user');
+      console.error('Error response:', error.response);
+      const errorMessage = error.response?.data?.error || 
+                          error.response?.data?.message || 
+                          error.message || 
+                          'Failed to delete user';
+      setError(errorMessage);
       setSuccess('');
-      setOpenDeleteDialog(false);
+      // Keep dialog open if there's an error so user can see the message
+      if (error.response?.status !== 400 && error.response?.status !== 404) {
+        setOpenDeleteDialog(false);
+      }
     }
   };
 
@@ -433,6 +443,11 @@ function UserManagement() {
         <Dialog open={openDeleteDialog} onClose={() => setOpenDeleteDialog(false)}>
           <DialogTitle>Delete User</DialogTitle>
           <DialogContent>
+            {error && (
+              <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>
+                {error}
+              </Alert>
+            )}
             <Typography>
               Are you sure you want to delete user <strong>{deletingUser?.username}</strong> ({deletingUser?.full_name})?
               <br />
@@ -441,7 +456,10 @@ function UserManagement() {
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+            <Button onClick={() => {
+              setOpenDeleteDialog(false);
+              setError('');
+            }}>Cancel</Button>
             <Button 
               onClick={handleDeleteUser} 
               variant="contained"

@@ -33,6 +33,9 @@ import {
   Snackbar,
   Alert
 } from '@mui/material';
+import { DateTimePicker } from '@mui/x-date-pickers/DateTimePicker';
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+import { AdapterMoment } from '@mui/x-date-pickers/AdapterMoment';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import EditIcon from '@mui/icons-material/Edit';
 import SaveIcon from '@mui/icons-material/Save';
@@ -79,25 +82,42 @@ function RecordsSummary() {
       setLoading(true);
       setError('');
 
-      // Adjust end date to include the entire day (23:59:59)
-      const endDate = new Date(filters.end_date);
-      endDate.setHours(23, 59, 59, 999);
-      const adjustedEndDate = format(endDate, 'yyyy-MM-dd HH:mm:ss');
-
+      // Format dates for API - backend will handle the time range
       const params = {
-        start_date: filters.start_date,
-        end_date: adjustedEndDate,
+        start_date: filters.start_date, // Format: YYYY-MM-DD
+        end_date: filters.end_date,     // Format: YYYY-MM-DD
         ...(filters.location !== 'all' && { location: filters.location })
       };
 
+      console.log('Fetching summary with params:', params);
       const response = await api.get('/admin/records/summary', { params });
+      console.log('Summary response:', response.data);
+      console.log('Response data length:', response.data?.length);
+
+      if (!response.data || !Array.isArray(response.data)) {
+        console.error('Invalid response data format:', response.data);
+        setError('Invalid data format received from server');
+        setSummaryData([]);
+        return;
+      }
+
+      if (response.data.length === 0) {
+        console.log('No records found for the selected date range');
+        setSummaryData([]);
+        return;
+      }
 
       const groupedData = response.data.reduce((users, record) => {
+        if (!record.user_id) {
+          console.warn('Record missing user_id:', record);
+          return users;
+        }
+
         if (!users[record.user_id]) {
           users[record.user_id] = {
             user_id: record.user_id,
-            username: record.username,
-            full_name: record.full_name,
+            username: record.username || 'Unknown',
+            full_name: record.full_name || 'Unknown',
             total_hours: 0,
             total_records: 0,
             locations: {},
@@ -132,10 +152,18 @@ function RecordsSummary() {
         return users;
       }, {});
 
-      setSummaryData(Object.values(groupedData));
+      const groupedArray = Object.values(groupedData);
+      console.log('Grouped data:', groupedArray);
+      console.log('Grouped data length:', groupedArray.length);
+      setSummaryData(groupedArray);
     } catch (error) {
       console.error('Failed to fetch summary:', error);
-      setError(error.response?.data?.message || 'Failed to fetch summary data');
+      console.error('Error response:', error.response);
+      setError(error.response?.data?.error || 
+               error.response?.data?.message || 
+               error.message || 
+               'Failed to fetch summary data');
+      setSummaryData([]);
     } finally {
       setLoading(false);
     }
@@ -157,6 +185,7 @@ function RecordsSummary() {
       return;
     }
 
+    // Database stores local Vancouver time, use as-is for editing
     const formattedClockIn = clockRecord.clock_in ?
       moment(clockRecord.clock_in).format('YYYY-MM-DDTHH:mm') : '';
     const formattedClockOut = clockRecord.clock_out ?
@@ -174,13 +203,33 @@ function RecordsSummary() {
 
   const handleSaveEdit = async () => {
     try {
-      await api.put(`/admin/records/${editingRecord.id}`, {
-        clock_in: editingRecord.clock_in,
-        clock_out: editingRecord.clock_out,
+      // Convert date-time format from 'YYYY-MM-DDTHH:mm' to 'YYYY-MM-DD HH:mm:ss' (keep local time)
+      const formatDateTimeForBackend = (dateTimeStr) => {
+        if (!dateTimeStr) return null;
+        const parsed = moment(dateTimeStr);
+        if (!parsed.isValid()) return null;
+        // Keep as local Vancouver time for database storage
+        return parsed.format('YYYY-MM-DD HH:mm:ss');
+      };
+
+      const payload = {
+        clock_in: formatDateTimeForBackend(editingRecord.clock_in),
+        clock_out: editingRecord.clock_out ? formatDateTimeForBackend(editingRecord.clock_out) : null,
         location: editingRecord.location,
-        break_minutes: editingRecord.break_minutes,
+        break_minutes: editingRecord.break_minutes || 30,
         notes: 'Modified by admin'
-      });
+      };
+
+      if (!payload.clock_in) {
+        setSnackbar({
+          open: true,
+          message: 'Invalid clock in time',
+          severity: 'error'
+        });
+        return;
+      }
+
+      await api.put(`/admin/records/${editingRecord.id}`, payload);
 
       setSnackbar({
         open: true,
@@ -244,46 +293,47 @@ function RecordsSummary() {
   };
 
   const EditRecordDialog = () => (
-    <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
-      <DialogTitle>Edit Clock Record</DialogTitle>
-      <DialogContent>
-        <Grid container spacing={2} sx={{ mt: 1 }}>
-          <Grid item xs={12}>
-            <TextField
-              label="Clock In"
-              type="text"
-              value={editingRecord?.clock_in?.slice(0, 16).replace('T', ' ') || ''}
-              onChange={(e) => setEditingRecord({
-                ...editingRecord,
-                clock_in: e.target.value.replace(' ', 'T')
-              })}
-              onBlur={(e) => handleEditDateTimeChange('clock_in', e.target.value)}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              placeholder="YYYY-MM-DD HH:mm"
-              inputProps={{
-                maxLength: 16
-              }}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              label="Clock Out"
-              type="text"
-              value={editingRecord?.clock_out?.slice(0, 16).replace('T', ' ') || ''}
-              onChange={(e) => setEditingRecord({
-                ...editingRecord,
-                clock_out: e.target.value.replace(' ', 'T')
-              })}
-              onBlur={(e) => handleEditDateTimeChange('clock_out', e.target.value)}
-              fullWidth
-              InputLabelProps={{ shrink: true }}
-              placeholder="YYYY-MM-DD HH:mm"
-              inputProps={{
-                maxLength: 16
-              }}
-            />
-          </Grid>
+    <LocalizationProvider dateAdapter={AdapterMoment}>
+      <Dialog open={editDialogOpen} onClose={() => setEditDialogOpen(false)}>
+        <DialogTitle>Edit Clock Record</DialogTitle>
+        <DialogContent>
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12}>
+              <DateTimePicker
+                label="Clock In"
+                value={editingRecord?.clock_in ? moment(editingRecord.clock_in) : null}
+                onChange={(newValue) => {
+                  setEditingRecord({
+                    ...editingRecord,
+                    clock_in: newValue ? newValue.format('YYYY-MM-DDTHH:mm') : ''
+                  });
+                }}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    InputLabelProps: { shrink: true }
+                  }
+                }}
+              />
+            </Grid>
+            <Grid item xs={12}>
+              <DateTimePicker
+                label="Clock Out"
+                value={editingRecord?.clock_out ? moment(editingRecord.clock_out) : null}
+                onChange={(newValue) => {
+                  setEditingRecord({
+                    ...editingRecord,
+                    clock_out: newValue ? newValue.format('YYYY-MM-DDTHH:mm') : ''
+                  });
+                }}
+                slotProps={{
+                  textField: {
+                    fullWidth: true,
+                    InputLabelProps: { shrink: true }
+                  }
+                }}
+              />
+            </Grid>
           <Grid item xs={12}>
             <TextField
               label="Break Minutes"
@@ -331,15 +381,24 @@ function RecordsSummary() {
         </Button>
       </DialogActions>
     </Dialog>
+    </LocalizationProvider>
   );
 
   const formatDuration = (hours) => {
-    if (!hours) return '0h';
-    return `${Number(hours).toFixed(1)}h`;
+    if (!hours) return '0h 0m';
+    const wholeHours = Math.floor(hours);
+    const minutes = Math.round((hours - wholeHours) * 60);
+    return `${wholeHours}h ${minutes}m`;
+  };
+
+  const formatTotalHours = (hours) => {
+    const formatted = Number(hours || 0).toFixed(1);
+    return `${formatted} ${formatted === '1.0' ? 'hour' : 'hours'}`;
   };
 
   const formatDateTime = (datetime) => {
     if (!datetime) return 'Invalid Date';
+    // Database stores local Vancouver time, display as-is
     return moment(datetime).format('YYYY-MM-DD HH:mm:ss');
   };
 
@@ -418,7 +477,7 @@ function RecordsSummary() {
           <>
             <Box sx={{ mb: 2 }}>
               <Chip
-                label={`Grand Total Hours: ${formatDuration(
+                label={`Grand Total Hours: ${formatTotalHours(
                   summaryData.reduce((total, user) => total + parseFloat(user.total_hours), 0)
                 )}`}
                 color="primary"
@@ -432,7 +491,7 @@ function RecordsSummary() {
                   <Typography>{user.full_name} ({user.username})</Typography>
                   <Box sx={{ ml: 2 }}>
                     <Chip
-                      label={`Total Hours: ${formatDuration(user.total_hours)}`}
+                      label={`Total Hours: ${formatTotalHours(user.total_hours)}`}
                       color="primary"
                       size="small"
                       sx={{ mr: 1 }}
@@ -450,7 +509,7 @@ function RecordsSummary() {
                       <Typography variant="subtitle1" gutterBottom>
                         {location}
                         <Chip
-                          label={`Location Total: ${formatDuration(locationData.total_hours)}`}
+                          label={`Location Total: ${formatTotalHours(locationData.total_hours)}`}
                           color="primary"
                           size="small"
                           sx={{ ml: 2 }}
@@ -471,9 +530,9 @@ function RecordsSummary() {
                           <TableBody>
                             {locationData.records.map((record) => (
                               <TableRow key={record.id}>
-                                <TableCell>{moment(record.clock_in).format('YYYY-MM-DD HH:mm:ss')}</TableCell>
+                                <TableCell>{formatDateTime(record.clock_in)}</TableCell>
                                 <TableCell>
-                                  {record.clock_out ? moment(record.clock_out).format('YYYY-MM-DD HH:mm:ss') : 'Still clocked in'}
+                                  {record.clock_out ? formatDateTime(record.clock_out) : 'Still clocked in'}
                                 </TableCell>
                                 <TableCell>{record.break_minutes} min</TableCell>
                                 <TableCell>{Number(record.individual_hours).toFixed(2)}</TableCell>
@@ -494,7 +553,7 @@ function RecordsSummary() {
                                 Location Total
                               </TableCell>
                               <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                                {formatDuration(locationData.total_hours)}
+                                {formatTotalHours(locationData.total_hours)}
                               </TableCell>
                               <TableCell />
                               <TableCell />
@@ -528,7 +587,7 @@ function RecordsSummary() {
                                 <TableRow key={location}>
                                   <TableCell>{location}</TableCell>
                                   <TableCell align="right">
-                                    {formatDuration(data.total_hours)}
+                                    {formatTotalHours(data.total_hours)}
                                   </TableCell>
                                   <TableCell align="right">
                                     {data.records.length}
@@ -543,7 +602,7 @@ function RecordsSummary() {
                                   Total All Locations
                                 </TableCell>
                                 <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                                  {formatDuration(user.total_hours)}
+                                  {formatTotalHours(user.total_hours)}
                                 </TableCell>
                                 <TableCell align="right" sx={{ fontWeight: 'bold' }}>
                                   {user.total_records}

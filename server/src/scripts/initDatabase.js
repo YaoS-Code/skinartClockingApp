@@ -145,6 +145,54 @@ const initDatabase = async () => {
         `);
         console.log('Audit logs table ensured');
 
+        // Create clock_requests table (补打卡申请表)
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS clock_requests (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                request_type ENUM('missed_clock_in', 'missed_clock_out', 'missed_both') NOT NULL,
+                request_date DATE NOT NULL,
+                clock_in_time TIME,
+                clock_out_time TIME,
+                reason TEXT NOT NULL,
+                status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+                reviewed_by INT,
+                reviewed_at TIMESTAMP NULL,
+                review_notes TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id),
+                FOREIGN KEY (reviewed_by) REFERENCES users(id),
+                INDEX idx_user_id (user_id),
+                INDEX idx_status (status),
+                INDEX idx_request_date (request_date),
+                INDEX idx_created_at (created_at)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('Clock requests table ensured');
+
+        // Create notifications table (通知表)
+        await connection.query(`
+            CREATE TABLE IF NOT EXISTS notifications (
+                id INT AUTO_INCREMENT PRIMARY KEY,
+                user_id INT NOT NULL,
+                type VARCHAR(50) NOT NULL,
+                title VARCHAR(255) NOT NULL,
+                message TEXT NOT NULL,
+                link VARCHAR(255),
+                related_id INT,
+                is_read BOOLEAN DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+                INDEX idx_user_id (user_id),
+                INDEX idx_is_read (is_read),
+                INDEX idx_created_at (created_at),
+                INDEX idx_type (type)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        `);
+        console.log('Notifications table ensured');
+
         // Create default admin user if not exists
         const hashedPassword = await bcrypt.hash('8780', 10);
         await connection.query(`
