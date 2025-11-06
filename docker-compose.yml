@@ -17,6 +17,12 @@ services:
       - ./mysql.cnf:/etc/mysql/conf.d/custom.cnf
     networks:
       - clockingapp-network
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pSkinartMD_2024_Root!"]
       interval: 10s
@@ -46,6 +52,7 @@ services:
       IP_WHITELIST_LOCAL_ONLY: false
       CORS_ORIGIN: http://clock.skinartmd.ca,https://clock.skinartmd.ca,http://api.clock.skinartmd.ca,https://api.clock.skinartmd.ca,http://clock.skinartmd.ca:3001,https://clock.skinartmd.ca:3001,http://100.78.69.23,http://100.78.69.23:3001,http://localhost,http://localhost:3001,http://localhost:3000
       TZ: America/Vancouver
+      NODE_OPTIONS: --max-old-space-size=256
     ports:
       - "13000:13000"  # 直接暴露后端API端口
     depends_on:
@@ -56,6 +63,12 @@ services:
     volumes:
       - ./server:/app
       - /app/node_modules
+    deploy:
+      resources:
+        limits:
+          memory: 384M
+        reservations:
+          memory: 128M
     command: sh -c "sleep 10 && npm run init-db && node src/app.js"
 
   # 前端服务（直接暴露端口）
@@ -75,6 +88,12 @@ services:
       - clockingapp-network
     environment:
       REACT_APP_API_URL: ""  # 前端会动态构建API URL
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
 
 volumes:
   mysql_data:

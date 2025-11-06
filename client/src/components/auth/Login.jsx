@@ -26,7 +26,12 @@ function Login() {
     try {
       const response = await api.post('/auth/login', formData);
       dispatch(setCredentials(response.data));
-      navigate('/');
+      // 根据用户角色重定向
+      if (response.data.user.role === 'admin') {
+        navigate('/admin/summary');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Login failed');
     }

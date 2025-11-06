@@ -1,128 +1,246 @@
 # SkinartMD 考勤打卡系统
 
-专为SkinartMD诊所设计的员工考勤打卡管理系统，支持时间记录管理和管理员功能。
+专为SkinartMD诊所设计的员工考勤打卡管理系统，支持时间记录管理、补打卡申请、管理员审批和通知功能。
 
-## 🚀 Docker快速部署（推荐）
+## 🚀 快速开始
 
-使用Docker可以快速在Mac Mini上部署整个系统：
+### 使用Docker部署（推荐）
 
 ```bash
-# 1. 创建.env文件（参考docker-compose.yml中的环境变量）
-# 2. 启动所有服务
+# 1. 启动所有服务
 docker-compose up -d
 
-# 3. 查看日志
+# 2. 查看日志
 docker-compose logs -f
 
-# 4. 访问应用
-# 前端: http://Mac_Mini的IP:3001
-# API: http://Mac_Mini的IP:13000/api
+# 3. 访问应用
+# 前端: http://clock.skinartmd.ca:3001
+# API: http://clock.skinartmd.ca:13000/api
 ```
 
-**详细Docker部署指南**: [DOCKER_DEPLOYMENT.md](DOCKER_DEPLOYMENT.md)
+### 系统要求
 
-## 功能特性
+- **Docker & Docker Compose**
+- **Colima** (Mac上的Docker替代方案)
+  - CPU: 4核
+  - 内存: 5GB
+  - 磁盘: 100GB
 
-- ✅ 员工打卡管理（上班/下班）
-- ✅ 工作时间自动计算（含休息时间扣除）
-- ✅ 管理员用户管理
-- ✅ 打卡记录查看和编辑
-- ✅ 审计日志追踪
-- ✅ **IP白名单访问控制**（仅允许局域网访问）
-- ✅ **Docker容器化部署**（一键启动所有服务）
-
-## 快速开始
-
-### 环境要求
-
-- Node.js (v14+)
-- MySQL (v8.0+)
-- Docker & Docker Compose（用于容器化部署）
-
-### 安装步骤
-
-1. **克隆项目**
-```bash
-git clone <repository-url>
-cd clockingApp
-```
-
-2. **后端设置**
-```bash
-cd server
-npm install
-cp .env.example .env
-# 编辑 .env 文件配置数据库和其他设置
-npm run init-db
-npm start
-```
-
-3. **前端设置**
-```bash
-cd client
-npm install
-npm start
-```
-
-## IP白名单配置
-
-为了在云端部署时保护系统安全，可以启用IP白名单功能，只允许特定IP地址访问。
-
-### Mac Mini 本地局域网部署（推荐）
-
-如果您要在Mac Mini上部署，只允许局域网访问，最简单的配置：
-
-```env
-IP_WHITELIST_ENABLED=true
-IP_WHITELIST_LOCAL_ONLY=true
-```
-
-这会自动允许所有局域网设备访问，拒绝公网IP。无需手动配置IP地址！
-
-**详细部署指南**: [Mac Mini部署文档](server/MAC_MINI_DEPLOYMENT.md)
-
-### 自定义IP白名单配置
-
-1. 在 `server/.env` 文件中设置：
-```env
-IP_WHITELIST_ENABLED=true
-IP_WHITELIST="203.0.113.0/24,192.168.1.100"
-```
-
-2. 支持的配置格式：
-- **单个IP**: `192.168.1.100`
-- **CIDR格式**: `192.168.1.0/24` (推荐)
-- **IP段格式**: `192.168.1.0-192.168.1.255`
-
-3. 多个IP用逗号分隔
-
-详细配置说明请参考: [IP白名单配置文档](server/IP_WHITELIST_CONFIG.md)
-
-## 默认账户
+### 默认账户
 
 - **用户名**: manager
 - **密码**: 8780
 - **角色**: admin
 
-## 技术栈
+## ✨ 核心功能
 
-### 后端
+### 员工功能
+- ✅ **打卡管理** - 上班/下班打卡（支持GPS定位）
+- ✅ **记录查看** - 查看历史打卡记录和统计
+- ✅ **补打卡申请** - 申请补打卡（无地域限制）
+  - 可以同时填写上班和下班时间
+  - 可以只填写上班时间或下班时间
+  - 可以设置休息时间
+- ✅ **修改记录申请** - 申请修改错误的打卡记录
+  - 在记录列表页面直接申请修改
+  - 自动填充原有记录信息
+- ✅ **通知系统** - 实时接收审批结果通知
+
+### 管理员功能
+- ✅ **员工管理** - 创建、编辑、禁用员工账户
+- ✅ **记录汇总** - 查看所有员工打卡记录和统计
+- ✅ **补打卡审批** - 审批员工的补打卡和修改申请
+- ✅ **通知管理** - 接收并处理员工申请通知
+
+## 📋 系统架构
+
+### 容器服务
+```
+✅ clockingapp-mysql   - MySQL数据库 (端口 3306)
+✅ clockingapp-server  - Node.js后端API (端口 13000)
+✅ clockingapp-client  - React前端 (端口 3001)
+```
+
+### 技术栈
+
+**后端**
 - Node.js + Express.js
-- MySQL
+- MySQL 8.0
 - JWT认证
 - bcryptjs密码加密
+- moment-timezone时区处理
 
-### 前端
+**前端**
 - React 18.2.0
 - Material-UI (MUI)
 - Redux Toolkit
 - React Router
 
-## 部署
+## 🔧 配置说明
 
-推荐通过Docker进行部署，相关说明见上文及 [PROJECT_DOCUMENTATION.md](PROJECT_DOCUMENTATION.md)。
+### Docker环境变量
 
-## 许可证
+在 `docker-compose.yml` 中配置：
+
+```yaml
+environment:
+  DB_HOST: mysql
+  DB_USER: clockingapp_user
+  DB_PASSWORD: SkinartMD_2024_DB!
+  DB_NAME: clockingapp
+  JWT_SECRET: skinartmd_jwt_secret_2024
+  CORS_ORIGIN: http://clock.skinartmd.ca,https://clock.skinartmd.ca
+  TZ: America/Vancouver
+```
+
+### Colima资源配置
+
+```bash
+# 启动Colima（推荐配置）
+colima start --cpu 4 --memory 5 --disk 100
+
+# 查看状态
+colima status
+```
+
+## 📊 数据库结构
+
+### 主要数据表
+
+- **users** - 用户账户信息
+- **clock_records** - 打卡记录
+- **clock_requests** - 补打卡和修改申请
+- **notifications** - 通知消息
+- **audit_logs** - 审计日志
+
+### 数据库备份
+
+```bash
+# 备份数据库
+docker exec clockingapp-mysql mysqldump -u root -pSkinartMD_2024_Root! clockingapp > backups/backup_$(date +%Y%m%d_%H%M%S).sql
+
+# 恢复数据库
+docker exec -i clockingapp-mysql mysql -u root -pSkinartMD_2024_Root! clockingapp < backups/backup_file.sql
+```
+
+## 🛠️ API文档
+
+### 认证相关
+- `POST /api/auth/login` - 用户登录
+- `POST /api/auth/register` - 用户注册
+- `GET /api/auth/profile` - 获取用户信息
+
+### 打卡相关
+- `POST /api/clock/in` - 上班打卡
+- `POST /api/clock/out` - 下班打卡
+- `GET /api/clock/records` - 获取打卡记录
+- `GET /api/clock/my-records` - 获取我的记录
+
+### 补打卡申请
+- `POST /api/clock-requests` - 创建申请（新建补打卡或修改记录）
+- `GET /api/clock-requests/my` - 获取我的申请
+- `GET /api/clock-requests/all` - 管理员查看所有申请
+- `POST /api/clock-requests/:id/review` - 管理员审批
+- `DELETE /api/clock-requests/:id` - 删除pending申请
+
+### 通知系统
+- `GET /api/notifications` - 获取通知列表
+- `GET /api/notifications/unread-count` - 获取未读数量
+- `PATCH /api/notifications/:id/read` - 标记为已读
+- `PATCH /api/notifications/read-all` - 全部标记为已读
+
+## 🔐 安全特性
+
+- ✅ JWT token认证
+- ✅ 密码bcrypt加密
+- ✅ IP白名单支持（可选）
+- ✅ 审计日志记录
+- ✅ HTTPS支持（通过nginx反向代理）
+
+## 📱 访问地址
+
+- **前端**: http://clock.skinartmd.ca:3001
+- **后端API**: http://clock.skinartmd.ca:13000/api
+- **数据库**: localhost:3306 (仅本地访问)
+
+## 🐛 常见问题
+
+### 1. 未登录时访问根路径白屏
+**已修复**: 未登录时自动重定向到登录页面，不显示Navbar。
+
+### 2. 管理员无法审批申请
+**已修复**: 修复日期时间格式转换问题，支持所有时间格式。
+
+### 3. 前端构建内存不足
+**解决方案**: 使用Colima分配至少5GB内存。
+
+## 📝 开发指南
+
+### 本地开发
+
+```bash
+# 后端
+cd server
+npm install
+npm run dev
+
+# 前端
+cd client
+npm install
+npm start
+```
+
+### 代码结构
+
+```
+skinartClockingApp/
+├── server/              # 后端代码
+│   ├── src/
+│   │   ├── app.js      # Express应用入口
+│   │   ├── routes/     # 路由定义
+│   │   ├── controllers/# 控制器
+│   │   ├── models/     # 数据模型
+│   │   └── middleware/ # 中间件
+│   └── package.json
+├── client/              # 前端代码
+│   ├── src/
+│   │   ├── components/ # React组件
+│   │   ├── services/   # API服务
+│   │   └── store/      # Redux状态管理
+│   └── package.json
+└── docker-compose.yml   # Docker编排配置
+```
+
+## 🔄 更新日志
+
+### v2.1.1 (2025-11-03)
+- ✅ 修复未登录时白屏问题
+- ✅ 修复管理员审批日期时间格式错误
+- ✅ 添加记录页面直接修改功能
+
+### v2.1 (2025-11-03)
+- ✅ 增强补打卡系统：支持同时填写上下班时间
+- ✅ 支持修改已有打卡记录
+- ✅ 添加通知系统
+
+### v2.0 (2025-11-03)
+- ✅ 添加补打卡申请功能
+- ✅ 添加通知系统
+- ✅ 数据库备份功能
+
+## 📞 支持
+
+如遇到问题：
+1. 查看容器日志: `docker logs clockingapp-server`
+2. 检查Colima资源状态: `colima status`
+3. 验证数据库连接: `docker exec clockingapp-mysql mysql -u root -p`
+
+## 📄 许可证
 
 [根据项目情况添加许可证信息]
 
+---
+
+**当前版本**: v2.1.1  
+**最后更新**: 2025年11月3日  
+**状态**: ✅ 生产环境运行中

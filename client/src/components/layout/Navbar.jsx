@@ -18,12 +18,12 @@ function Navbar() {
   return (
     <AppBar position="static" sx={{ marginBottom: 4 }}>
       <Toolbar>
-        <Typography variant="h6" component={Link} to="/" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}>
+        <Typography variant="h6" component={Link} to="/dashboard" sx={{ flexGrow: 1, textDecoration: 'none', color: 'inherit' }}>
           SkinartMD
         </Typography>
         {isAuthenticated ? (
           <>
-            <Button color="inherit" component={Link} to="/">
+            <Button color="inherit" component={Link} to="/dashboard">
               打卡
             </Button>
             <Button color="inherit" component={Link} to="/records">

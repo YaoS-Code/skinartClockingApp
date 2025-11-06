@@ -21,15 +21,18 @@ function App() {
   return (
     <>
       <CssBaseline />
-      {user?.role === 'admin' ? <AdminNavbar /> : <Navbar />}
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {isAuthenticated && (user?.role === 'admin' ? <AdminNavbar /> : <Navbar />)}
+      <Container maxWidth="lg" sx={{ mt: isAuthenticated ? 4 : 0, mb: isAuthenticated ? 4 : 0 }}>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           
-          {/* Regular User Routes */}
+          {/* 根路径：直接重定向到登录页 */}
+          <Route path="/" element={<Navigate to="/login" replace />} />
+          
+          {/* Dashboard Routes */}
           <Route
-            path="/"
+            path="/dashboard"
             element={
               <PrivateRoute>
                 {user?.role === 'admin' ? 
@@ -39,6 +42,8 @@ function App() {
               </PrivateRoute>
             }
           />
+          
+          {/* Regular User Routes */}
           <Route
             path="/records"
             element={
@@ -94,6 +99,9 @@ function App() {
               </PrivateRoute>
             }
           />
+          
+          {/* 未匹配的路由重定向 */}
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </Container>
     </>
